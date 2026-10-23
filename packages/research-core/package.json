@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./market-summary": "./src/market-summary.ts",
-    "./public-controls": "./src/public-controls.ts"
+    "./public-controls": "./src/public-controls.ts",
+    "./service-auth": "./src/service-auth.ts"
   }
 }

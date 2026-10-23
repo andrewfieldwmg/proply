@@ -25,6 +25,7 @@ test('preview runbook preserves external approval and teardown boundaries', asyn
   for (const required of [
     'RESEARCH_API_ENABLED',
     'DATABASE_READ_URL',
+    'RESEARCH_SERVICE_TOKEN',
     'preview',
     'WAF',
     'spend',

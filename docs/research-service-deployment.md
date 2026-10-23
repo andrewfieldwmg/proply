@@ -24,6 +24,8 @@ This document is configuration guidance, not deployment evidence or approval.
 The new project may receive only these application variables:
 
 - `DATABASE_READ_URL`: the dedicated `proply_research_api` reduced-view login.
+- `RESEARCH_SERVICE_TOKEN`: a separately generated service credential supplied
+  only to the approved calling workload and this isolated server runtime.
 - `RESEARCH_API_ENABLED=false`: the required initial state.
 
 Do not connect the existing Neon integration or copy `DATABASE_URL`,
@@ -37,7 +39,7 @@ Before enabling the route, publish a Preview-scoped WAF rule for the exact
 market-summary path, counted by provider-supplied client IP. Verify the actual
 account's spend controls and automatic enforcement; a notification-only spend
 threshold is insufficient. Keep deployment protection and log retention at the
-smallest level compatible with the reviewed anonymous demo.
+smallest level compatible with the reviewed service-to-service preview.
 
 ## Approval and proof
 

@@ -17,6 +17,7 @@ export type QuerySummary = (
 ) => Promise<MarketSummaryRow[]>;
 
 export type MarketSummaryHandlerDependencies = {
+  authorizeRequest: (request: Request) => boolean;
   getDatabaseUrl: () => string | undefined;
   querySummary: QuerySummary;
   isEnabled?: () => boolean;
@@ -185,6 +186,22 @@ export function createMarketSummaryHandler(dependencies: MarketSummaryHandlerDep
     const traceId = createTraceId();
     if (!isEnabled()) {
       return errorResponse(404, 'route_disabled', 'The research route is not available.', traceId);
+    }
+
+    let authorized = false;
+    try {
+      authorized = dependencies.authorizeRequest(request);
+    } catch {
+      authorized = false;
+    }
+    if (!authorized) {
+      return errorResponse(
+        401,
+        'unauthorised',
+        'Authentication is required.',
+        traceId,
+        { 'www-authenticate': 'Bearer' },
+      );
     }
 
     let url: URL;

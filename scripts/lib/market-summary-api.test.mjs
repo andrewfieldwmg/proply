@@ -21,6 +21,7 @@ function params(value) {
 
 function dependencies(overrides = {}) {
   return {
+    authorizeRequest: () => true,
     getDatabaseUrl: () => 'postgresql://reader@example.invalid/proply',
     querySummary: async () => [successRow],
     currentYear: () => 2026,
@@ -30,6 +31,72 @@ function dependencies(overrides = {}) {
     ...overrides,
   };
 }
+
+test('missing and invalid service credentials fail identically before protected dependencies', async () => {
+  const calls = { rate: 0, database: 0, concurrency: 0, query: 0 };
+  const handler = createMarketSummaryHandler(dependencies({
+    authorizeRequest: (request) => request.headers.get('authorization') === 'Bearer valid-test-token',
+    checkRateLimit: () => {
+      calls.rate += 1;
+      return { allowed: true };
+    },
+    getDatabaseUrl: () => {
+      calls.database += 1;
+      return 'postgresql://reader@example.invalid/proply';
+    },
+    acquireConcurrency: () => {
+      calls.concurrency += 1;
+      return () => {};
+    },
+    querySummary: async () => {
+      calls.query += 1;
+      return [successRow];
+    },
+  }));
+  const url = 'https://example.test/api/research/market-summary?area=E10&start_year=2020&end_year=2021';
+
+  const missing = await handler(new Request(url));
+  const invalid = await handler(new Request(url, {
+    headers: { authorization: 'Bearer invalid-test-token' },
+  }));
+  const authFailure = await createMarketSummaryHandler(dependencies({
+    authorizeRequest: () => { throw new Error('credential verifier detail'); },
+  }))(new Request(url));
+
+  assert.equal(missing.status, 401);
+  assert.equal(invalid.status, 401);
+  assert.equal(authFailure.status, 401);
+  assert.deepEqual(await missing.json(), await invalid.json());
+  assert.deepEqual(await authFailure.json(), {
+    ok: false,
+    error: {
+      code: 'unauthorised',
+      message: 'Authentication is required.',
+      trace_id: 'trace-test-123',
+    },
+  });
+  assert.equal(missing.headers.get('cache-control'), 'no-store');
+  assert.equal(missing.headers.get('www-authenticate'), 'Bearer');
+  assert.deepEqual(calls, { rate: 0, database: 0, concurrency: 0, query: 0 });
+});
+
+test('disabled route returns 404 without evaluating authentication', async () => {
+  let authCalls = 0;
+  const handler = createMarketSummaryHandler(dependencies({
+    isEnabled: () => false,
+    authorizeRequest: () => {
+      authCalls += 1;
+      return true;
+    },
+  }));
+
+  const response = await handler(new Request(
+    'https://example.test/api/research/market-summary?area=E10&start_year=2020&end_year=2021',
+  ));
+
+  assert.equal(response.status, 404);
+  assert.equal(authCalls, 0);
+});
 
 test('policy accepts allowlisted inputs and exact year boundaries', () => {
   assert.deepEqual(
@@ -242,15 +309,18 @@ test('query is fixed, parameterized and limited to the reduced view', () => {
   assert.equal((MARKET_SUMMARY_SQL.match(/\bSELECT\b/gi) ?? []).length, 1);
 });
 
-test('isolated Next route reads only DATABASE_READ_URL and passes an abort signal to Neon', async () => {
+test('isolated Next route reads only dedicated server credentials and passes an abort signal to Neon', async () => {
   const route = await readFile(
     new URL('../../apps/research-api/app/api/research/market-summary/route.ts', import.meta.url),
     'utf8',
   );
 
   assert.match(route, /process\.env\.DATABASE_READ_URL/);
+  assert.match(route, /process\.env\.RESEARCH_SERVICE_TOKEN/);
+  assert.match(route, /request\.headers\.get\(['"]authorization['"]\)/);
   assert.doesNotMatch(route, /process\.env\.DATABASE_URL\b/);
   assert.doesNotMatch(route, /POSTGRES_URL|UNPOOLED|DATABASE_WRITE/i);
+  assert.doesNotMatch(route, /NEXT_PUBLIC_|searchParams\.get\(['"](?:token|key|authorization)['"]\)/i);
   assert.match(route, /fetchOptions:\s*\{\s*signal\s*\}/);
   assert.match(route, /RESEARCH_API_ENABLED\s*===\s*'true'/);
   assert.match(route, /maxDuration\s*=\s*5/);

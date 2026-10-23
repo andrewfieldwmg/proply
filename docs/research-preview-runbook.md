@@ -12,6 +12,9 @@ separate explicit approval. Never change the production alias during this gate.
   other value returns a traced 404 before database access.
 - `DATABASE_READ_URL` is the only accepted database variable. There is no
   fallback to generic Neon or updater credentials.
+- `RESEARCH_SERVICE_TOKEN` is the only accepted request credential. Missing,
+  malformed and invalid bearer values fail identically before rate limiting,
+  database configuration, concurrency or query execution.
 - The handler allows five requests per ten-second burst and thirty per minute
   for a bounded Vercel forwarding-header key. It retains at most 1,000 keys.
 - Four aggregate queries may be active in one function instance. The database
@@ -34,8 +37,10 @@ Before any external write, record approval for this exact set:
 2. Issue a fresh password interactively for `proply_research_api`, then enable
    login only after its effective grants and denied operations pass. Never put
    the password in a command, transcript, source file or evidence artifact.
-3. Add preview-only `DATABASE_READ_URL` and initially set preview-only
-   `RESEARCH_API_ENABLED=false` in Vercel.
+3. Issue a fresh service credential through an approved secret-handling path,
+   give it only to the approved caller, and add preview-only
+   `RESEARCH_SERVICE_TOKEN` and `DATABASE_READ_URL`. Initially set preview-only
+   `RESEARCH_API_ENABLED=false` in Vercel. Do not retain the value in evidence.
 4. Commit and push the reviewed source or deploy the exact reviewed revision to
    a Vercel preview URL. Do not promote it or change the production alias.
 5. Publish a WAF rate rule scoped to the market-summary path and Preview
@@ -54,7 +59,9 @@ preview deployment.
 
 Run only against the commit-specific preview URL:
 
-- A valid aggregate request returns 200 with approved fields, attribution,
+- Missing and invalid bearer credentials return the same no-store 401 and do
+  not reach rate limiting or the database.
+- A valid authenticated aggregate request returns 200 with approved fields, attribution,
   limitations, data currency, cache policy and a trace ID.
 - Unknown fields, injection-shaped input and oversized input return safe 400 or
   413 responses without query or credential detail.
@@ -76,7 +83,8 @@ new deployment. Then, under separate explicit approval:
 
 1. Set `RESEARCH_API_ENABLED=false` for preview and deploy that state if the
    preview URL must remain available.
-2. Remove preview-only `DATABASE_READ_URL` and the preview WAF rule.
+2. Remove preview-only `RESEARCH_SERVICE_TOKEN`, `DATABASE_READ_URL` and the
+   preview WAF rule; revoke or rotate the caller's corresponding credential.
 3. Run `ALTER ROLE proply_research_api NOLOGIN` through an approved secure
    database session and verify login failure. Revoke or rotate its credential.
 4. Remove the preview deployment and confirm that its URL no longer serves the

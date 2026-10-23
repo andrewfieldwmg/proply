@@ -9,6 +9,7 @@ import {
   createRateLimiter,
   getClientKey,
 } from '@proply/research-core/public-controls';
+import { verifyServiceBearer } from '@proply/research-core/service-auth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -36,6 +37,10 @@ async function querySummary(
 
 const handleMarketSummary = createMarketSummaryHandler({
   isEnabled: () => process.env.RESEARCH_API_ENABLED === 'true',
+  authorizeRequest: (request) => verifyServiceBearer(
+    request.headers.get('authorization'),
+    process.env.RESEARCH_SERVICE_TOKEN,
+  ),
   getDatabaseUrl: () => process.env.DATABASE_READ_URL,
   checkRateLimit: (request) => rateLimiter.check(getClientKey(request)),
   acquireConcurrency: () => concurrencyGate.acquire(),

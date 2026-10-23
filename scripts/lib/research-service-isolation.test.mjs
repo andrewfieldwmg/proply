@@ -27,7 +27,7 @@ test('research API is packaged as a separate monorepo application', async () => 
   ]);
 });
 
-test('isolated route has one credential name and no Proply application imports', async () => {
+test('isolated route has only its dedicated credentials and no Proply application imports', async () => {
   const route = await text('apps/research-api/app/api/research/market-summary/route.ts');
   const applicationFiles = await Promise.all([
     text('apps/research-api/app/api/research/market-summary/route.ts'),
@@ -36,6 +36,7 @@ test('isolated route has one credential name and no Proply application imports',
   ]);
 
   assert.match(route, /process\.env\.DATABASE_READ_URL/);
+  assert.match(route, /process\.env\.RESEARCH_SERVICE_TOKEN/);
   assert.match(route, /process\.env\.RESEARCH_API_ENABLED\s*===\s*'true'/);
   assert.match(route, /@proply\/research-core/);
   assert.doesNotMatch(route, /process\.env\.DATABASE_URL\b|POSTGRES_URL|UNPOOLED|DATABASE_WRITE/i);
@@ -53,6 +54,7 @@ test('deployment note fixes the isolated Vercel root and disabled-first configur
     'apps/research-api',
     'separate Vercel project',
     'DATABASE_READ_URL',
+    'RESEARCH_SERVICE_TOKEN',
     'RESEARCH_API_ENABLED=false',
     'Include source files outside of the Root Directory',
     'WAF',
@@ -60,5 +62,15 @@ test('deployment note fixes the isolated Vercel root and disabled-first configur
     'production alias',
   ]) {
     assert.match(deployment, new RegExp(required, 'i'));
+  }
+});
+
+test('tracked environment examples declare the server-only service credential without a value', async () => {
+  for (const path of ['.env.example', 'apps/research-api/.env.example']) {
+    const example = await text(path);
+    assert.match(example, /^RESEARCH_SERVICE_TOKEN=$/m);
+    assert.doesNotMatch(example, /^RESEARCH_SERVICE_TOKEN=.+$/m);
+    assert.doesNotMatch(example, /NEXT_PUBLIC_RESEARCH_SERVICE_TOKEN/);
+    assert.match(example, /^RESEARCH_API_ENABLED=false$/m);
   }
 });

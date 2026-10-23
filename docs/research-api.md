@@ -23,6 +23,7 @@ connection string or credential. Address, postcode-unit, URL, identifier,
 Rightmove, scraper, raw-row, arbitrary SQL, S3 and MCP access are outside the
 contract.
 
-The authentication source change remains local and uncommitted. Credential
-creation, environment configuration, feature enablement and deployment require
-separate approval.
+Service authentication was introduced by public commit
+`670d9f040e734a0c13875385d98f429e476cf432`, but has not been configured or
+deployed. Credential creation, environment configuration, feature enablement
+and deployment require separate approval.

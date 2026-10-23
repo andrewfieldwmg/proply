@@ -65,6 +65,17 @@ test('deployment note fixes the isolated Vercel root and disabled-first configur
   }
 });
 
+test('research API documentation separates published source from runtime deployment', async () => {
+  const documentation = await text('docs/research-api.md');
+
+  assert.match(
+    documentation,
+    /introduced by public commit\s+`670d9f040e734a0c13875385d98f429e476cf432`/,
+  );
+  assert.match(documentation, /has not been configured or\s+deployed/);
+  assert.doesNotMatch(documentation, /remains local and uncommitted/);
+});
+
 test('tracked environment examples declare the server-only service credential without a value', async () => {
   for (const path of ['.env.example', 'apps/research-api/.env.example']) {
     const example = await text(path);

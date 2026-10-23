@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "status": "approved_for_local_gate_2_only",
+  "public_release_approval": "required",
+  "capability": "market_summary",
+  "source": {
+    "name": "HM Land Registry Price Paid Data",
+    "url": "https://www.gov.uk/government/statistical-data-sets/price-paid-data-downloads",
+    "licence": "Open Government Licence v3.0",
+    "licence_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+  },
+  "allowed_areas": [
+    "ALL",
+    "E10",
+    "E11",
+    "E17"
+  ],
+  "allowed_property_types": [
+    "ALL",
+    "D",
+    "S",
+    "T",
+    "F"
+  ],
+  "minimum_sale_year": 1995,
+  "filters": {
+    "tenure": "F",
+    "category_type": "A",
+    "market_price_outlier": false
+  },
+  "read_model_fields": [
+    "area",
+    "sale_year",
+    "property_type",
+    "sold_price",
+    "data_refreshed_at"
+  ],
+  "public_output_fields": [
+    "area",
+    "start_year",
+    "end_year",
+    "property_type",
+    "transaction_count",
+    "average_sold_price",
+    "median_sold_price",
+    "data_refreshed_at",
+    "attribution",
+    "limitations"
+  ],
+  "excluded_fields": [
+    "address",
+    "postcode",
+    "transaction_id",
+    "source_url",
+    "listing_price",
+    "rightmove_property_id",
+    "latitude",
+    "longitude",
+    "scraper_metadata",
+    "raw_row"
+  ],
+  "attribution": {
+    "statement": "Contains HM Land Registry data © Crown copyright and database right 2021. This data is licensed under the Open Government Licence v3.0.",
+    "licence_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+  },
+  "limitations": [
+    "Price Paid Data covers sales lodged with HM Land Registry for registration and excludes transactions that were not for value or have not yet been lodged.",
+    "Recent periods can be incomplete because registration follows the sale date, sometimes by more than two months.",
+    "HM Land Registry does not guarantee that the data is error-free or fit for a particular purpose.",
+    "The local Gate 2 decision excludes address data because its third-party rights require additional care and the aggregate capability does not need it.",
+    "The reduced database view is an internal source for a bounded API and must not be exposed as a raw public query surface."
+  ]
+}

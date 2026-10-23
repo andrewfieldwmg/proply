@@ -1,0 +1,80 @@
+{
+  "candidates": [
+    {
+      "reference": {
+        "provider": "synthetic-sold-listings",
+        "reference": "SYN-SOLD-001",
+        "observedAt": "2026-01-10T09:00:00.000Z"
+      },
+      "address": "12 Example Avenue",
+      "postcode": "E10 0AA",
+      "completedAt": "2026-02-20",
+      "soldPrice": 495000,
+      "propertyType": "T",
+      "priceEvents": [
+        {
+          "observedAt": "2026-02-05T08:30:00.000Z",
+          "askingPrice": 475000,
+          "provenance": {
+            "provider": "synthetic-price-history",
+            "reference": "SYN-EVENT-002",
+            "observedAt": "2026-02-05T08:30:00.000Z"
+          }
+        },
+        {
+          "observedAt": "2026-01-10T09:00:00.000Z",
+          "askingPrice": 450000,
+          "provenance": {
+            "provider": "synthetic-price-history",
+            "reference": "SYN-EVENT-001",
+            "observedAt": "2026-01-10T09:00:00.000Z"
+          }
+        },
+        {
+          "observedAt": "2026-03-01T12:00:00.000Z",
+          "askingPrice": 500000,
+          "provenance": {
+            "provider": "synthetic-price-history",
+            "reference": "SYN-EVENT-POST-COMPLETION",
+            "observedAt": "2026-03-01T12:00:00.000Z"
+          }
+        }
+      ]
+    },
+    {
+      "reference": {
+        "provider": "synthetic-sold-listings",
+        "reference": "SYN-SOLD-ANOMALY",
+        "observedAt": "2026-04-01T10:00:00.000Z"
+      },
+      "address": "7 Test Close",
+      "postcode": "E11 0BB",
+      "completedAt": "2026-05-01",
+      "soldPrice": 800000,
+      "propertyType": "F",
+      "priceEvents": [
+        {
+          "observedAt": "2026-04-01T10:00:00.000Z",
+          "askingPrice": 300000,
+          "provenance": {
+            "provider": "synthetic-price-history",
+            "reference": "SYN-EVENT-ANOMALY",
+            "observedAt": "2026-04-01T10:00:00.000Z"
+          }
+        }
+      ]
+    }
+  ],
+  "details": [
+    {
+      "reference": {
+        "provider": "synthetic-sold-listings",
+        "reference": "SYN-SOLD-001",
+        "observedAt": "2026-01-10T09:00:00.000Z"
+      },
+      "bedrooms": 3,
+      "floorAreaSqm": 91.4,
+      "attributesObservedAt": "2026-01-10T09:00:00.000Z"
+    }
+  ]
+}

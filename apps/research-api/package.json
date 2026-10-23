@@ -1,0 +1,27 @@
+{
+  "name": "@proply/research-api",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "next build",
+    "check": "next typegen && tsc --noEmit --incremental false",
+    "dev": "next dev",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "1.1.0",
+    "@proply/research-core": "*",
+    "next": "16.4.2",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "7.0.2"
+  }
+}

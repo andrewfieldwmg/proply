@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.vercel/
+.env
+.env.local
+*.log
+*.tsbuildinfo
+coverage/
+tmp/
+logs/
+.tmp-*
+*.traineddata
+*-verification.png
+listings-dates-*.png

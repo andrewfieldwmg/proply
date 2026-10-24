@@ -13,14 +13,16 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:ask-proply-web": "npm --workspace @proply/ask-proply-web run build",
     "build:research-api": "npm --workspace @proply/research-api run build",
     "start": "next start",
     "check": "next typegen && tsc --noEmit --incremental false",
+    "check:ask-proply-web": "npm --workspace @proply/ask-proply-web run check",
     "check:research-api": "npm --workspace @proply/research-api run check",
     "test": "node --test scripts/lib/*.test.mjs src/acquisition/*.test.mjs src/worker/*.test.mjs",
     "verify:public-boundary": "node scripts/check-public-boundary.mjs",
     "verify:research-boundary": "node scripts/verify-research-boundary.mjs",
-    "verify": "npm run verify:public-boundary && npm test && npm run check && npm run check:research-api && npm run build && npm run build:research-api"
+    "verify": "npm run verify:public-boundary && npm test && npm run check && npm run check:research-api && npm run check:ask-proply-web && npm run build && npm run build:research-api && npm run build:ask-proply-web"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0",

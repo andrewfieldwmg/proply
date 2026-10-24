@@ -1,0 +1,30 @@
+{
+  "name": "@proply/ask-proply-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "next build",
+    "check": "next typegen && tsc --noEmit --incremental false",
+    "dev": "next dev",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@aws-crypto/sha256-js": "5.2.0",
+    "@smithy/protocol-http": "5.6.2",
+    "@smithy/signature-v4": "5.7.4",
+    "@vercel/oidc-aws-credentials-provider": "3.1.2",
+    "next": "16.4.2",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "7.0.2"
+  }
+}

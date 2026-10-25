@@ -5,6 +5,7 @@ import { awsCredentialsProvider } from '@vercel/oidc-aws-credentials-provider';
 
 import {
   adaptControlPlaneResult,
+  AskProplyPolicyError,
   type AskProplyEnvelope,
   type AskProplyResearch,
 } from './ask-proply.ts';
@@ -134,8 +135,10 @@ export function createControlPlaneResearch({
     const body = JSON.stringify({ question });
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), CONTROL_PLANE_TIMEOUT_MS);
+    let stage = 'sign';
     try {
       const signedHeaders = await sign({ url: config.url, body });
+      stage = 'request';
       const response = await transport(config.url, {
         method: 'POST',
         headers: { ...signedHeaders, 'content-type': 'application/json' },
@@ -153,19 +156,32 @@ export function createControlPlaneResearch({
           retry_after_seconds: 60,
         };
       }
+      stage = 'status';
       if (response.status !== 200) unavailable();
       const declaredLength = Number(response.headers.get('content-length') ?? 0);
+      stage = 'response_size';
       if (declaredLength > CONTROL_PLANE_MAX_RESPONSE_BYTES) unavailable();
+      stage = 'response_read';
       const raw = await response.text();
       if (new TextEncoder().encode(raw).byteLength > CONTROL_PLANE_MAX_RESPONSE_BYTES) unavailable();
       let decoded: unknown;
       try {
+        stage = 'response_json';
         decoded = JSON.parse(raw);
       } catch {
         unavailable();
       }
+      stage = 'response_contract';
       return adaptControlPlaneResult(decoded);
-    } catch {
+    } catch (error) {
+      console.info(JSON.stringify({
+        event: 'ask_proply_upstream_rejected',
+        stage,
+        validation_code: error instanceof AskProplyPolicyError
+          ? error.diagnosticCode ?? 'unclassified'
+          : null,
+        content_logged: false,
+      }));
       unavailable();
     } finally {
       clearTimeout(timeout);

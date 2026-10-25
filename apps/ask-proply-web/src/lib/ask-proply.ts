@@ -64,10 +64,28 @@ export interface AskProplyFailureEnvelope {
 export type AskProplyEnvelope = AskProplyGroundedEnvelope | AskProplyFailureEnvelope;
 export type AskProplyResearch = (question: string) => Promise<AskProplyEnvelope>;
 
+export type AskProplyDiagnosticCode =
+  | 'response_shape'
+  | 'data_mode'
+  | 'abstention'
+  | 'answer'
+  | 'citations'
+  | 'evidence_shape'
+  | 'evidence_scope'
+  | 'evidence_period'
+  | 'evidence_metrics'
+  | 'evidence_source'
+  | 'evidence_attribution'
+  | 'evidence_limitations'
+  | 'citation_binding';
+
 export class AskProplyPolicyError extends Error {
-  constructor(message: string) {
+  readonly diagnosticCode?: AskProplyDiagnosticCode;
+
+  constructor(message: string, diagnosticCode?: AskProplyDiagnosticCode) {
     super(message);
     this.name = 'AskProplyPolicyError';
+    this.diagnosticCode = diagnosticCode;
   }
 }
 
@@ -85,49 +103,79 @@ function nonNegativeInteger(value: unknown): value is number {
   return Number.isInteger(value) && Number(value) >= 0;
 }
 
-function isEvidence(value: unknown, dataMode: AskProplyDataMode): value is AskProplyEvidence {
+function evidenceDiagnostic(
+  value: unknown,
+  dataMode: AskProplyDataMode,
+): AskProplyDiagnosticCode | null {
   const evidence = asRecord(value);
-  const period = asRecord(evidence?.period);
-  const source = asRecord(evidence?.source);
-  const attribution = asRecord(source?.attribution);
-  const expectedSource = dataMode === 'proply_https' ? 'Proply' : 'Synthetic fixture';
-  const licenceUrl = attribution?.licence_url;
-  const refreshedAt = source?.refreshed_at;
-  const average = evidence?.average_sold_price_gbp;
-  const median = evidence?.median_sold_price_gbp;
+  if (evidence == null || !boundedString(evidence.citation_id, 256)) {
+    return 'evidence_shape';
+  }
+  if (
+    !['ALL', 'E10', 'E11', 'E17'].includes(String(evidence.area))
+    || !['ALL', 'D', 'S', 'T', 'F'].includes(String(evidence.property_type))
+  ) return 'evidence_scope';
 
-  return evidence != null
-    && boundedString(evidence.citation_id, 256)
-    && ['ALL', 'E10', 'E11', 'E17'].includes(String(evidence.area))
-    && ['ALL', 'D', 'S', 'T', 'F'].includes(String(evidence.property_type))
-    && period != null
-    && nonNegativeInteger(period.start_year)
-    && nonNegativeInteger(period.end_year)
-    && Number(period.start_year) >= 1900
-    && Number(period.start_year) <= Number(period.end_year)
-    && Number(period.end_year) <= 2200
-    && nonNegativeInteger(evidence.transaction_count)
-    && (average === null || nonNegativeInteger(average))
-    && (median === null || nonNegativeInteger(median))
-    && (Number(evidence.transaction_count) === 0 || (average !== null && median !== null))
-    && source != null
-    && source.name === expectedSource
-    && (refreshedAt === null || boundedString(refreshedAt, 64))
-    && attribution != null
-    && boundedString(attribution.statement, 500)
-    && boundedString(attribution.licence_name, 160)
-    && (
+  const period = asRecord(evidence?.period);
+  if (
+    period == null
+    || !nonNegativeInteger(period.start_year)
+    || !nonNegativeInteger(period.end_year)
+    || Number(period.start_year) < 1900
+    || Number(period.start_year) > Number(period.end_year)
+    || Number(period.end_year) > 2200
+  ) return 'evidence_period';
+
+  const average = evidence.average_sold_price_gbp;
+  const median = evidence.median_sold_price_gbp;
+  if (
+    !nonNegativeInteger(evidence.transaction_count)
+    || (average !== null && !nonNegativeInteger(average))
+    || (median !== null && !nonNegativeInteger(median))
+    || (Number(evidence.transaction_count) > 0 && (average === null || median === null))
+  ) return 'evidence_metrics';
+
+  const source = asRecord(evidence?.source);
+  const expectedSource = dataMode === 'proply_https' ? 'Proply' : 'Synthetic fixture';
+  const refreshedAt = source?.refreshed_at;
+  if (
+    source == null
+    || source.name !== expectedSource
+    || (refreshedAt !== null && !boundedString(refreshedAt, 64))
+  ) return 'evidence_source';
+
+  const attribution = asRecord(source?.attribution);
+  const licenceUrl = attribution?.licence_url;
+  if (
+    attribution == null
+    || !boundedString(attribution.statement, 500)
+    || !boundedString(attribution.licence_name, 160)
+    || !(
       licenceUrl === null
       || (boundedString(licenceUrl, 500) && licenceUrl.startsWith('https://'))
     )
-    && Array.isArray(evidence.limitations)
-    && evidence.limitations.length >= 1
-    && evidence.limitations.length <= 10
-    && evidence.limitations.every((item) => boundedString(item, 500));
+  ) return 'evidence_attribution';
+
+  if (
+    !Array.isArray(evidence.limitations)
+    || evidence.limitations.length < 1
+    || evidence.limitations.length > 10
+    || !evidence.limitations.every((item) => boundedString(item, 500))
+  ) return 'evidence_limitations';
+  return null;
+}
+
+function isEvidence(value: unknown, dataMode: AskProplyDataMode): value is AskProplyEvidence {
+  return evidenceDiagnostic(value, dataMode) == null;
+}
+
+function invalidControlPlaneResult(code: AskProplyDiagnosticCode): never {
+  throw new AskProplyPolicyError('invalid_control_plane_result', code);
 }
 
 export function adaptControlPlaneResult(value: unknown): AskProplyGroundedEnvelope {
   const record = asRecord(value);
+  if (record == null) invalidControlPlaneResult('response_shape');
   const upstreamMode = record?.data_mode;
   const dataMode: AskProplyDataMode | null = upstreamMode === 'proply_https'
     ? 'proply_https'
@@ -137,31 +185,35 @@ export function adaptControlPlaneResult(value: unknown): AskProplyGroundedEnvelo
   const citations = record?.citations;
   const evidence = record?.evidence;
 
+  if (dataMode == null) invalidControlPlaneResult('data_mode');
+  if (record.abstained !== false) invalidControlPlaneResult('abstention');
+  if (!boundedString(record.answer, 16_384)) invalidControlPlaneResult('answer');
   if (
-    record == null
-    || dataMode == null
-    || record.abstained !== false
-    || !boundedString(record.answer, 16_384)
-    || !Array.isArray(citations)
+    !Array.isArray(citations)
     || citations.length < 1
     || citations.length > 2
     || !citations.every((item) => boundedString(item, 256))
     || new Set(citations).size !== citations.length
-    || !Array.isArray(evidence)
+  ) invalidControlPlaneResult('citations');
+  if (
+    !Array.isArray(evidence)
     || evidence.length < 1
     || evidence.length > 2
-    || !evidence.every((item) => isEvidence(item, dataMode))
-  ) {
-    throw new AskProplyPolicyError('invalid_control_plane_result');
+  ) invalidControlPlaneResult('evidence_shape');
+  for (const item of evidence) {
+    const code = evidenceDiagnostic(item, dataMode);
+    if (code != null) invalidControlPlaneResult(code);
   }
 
-  const evidenceIds = new Set(evidence.map((item) => item.citation_id));
+  const typedCitations = citations as string[];
+  const typedEvidence = evidence as AskProplyEvidence[];
+  const evidenceIds = new Set(typedEvidence.map((item) => item.citation_id));
   if (
-    evidenceIds.size !== evidence.length
-    || evidenceIds.size !== citations.length
-    || !citations.every((citation) => evidenceIds.has(citation))
+    evidenceIds.size !== typedEvidence.length
+    || evidenceIds.size !== typedCitations.length
+    || !typedCitations.every((citation) => evidenceIds.has(citation))
   ) {
-    throw new AskProplyPolicyError('invalid_control_plane_result');
+    invalidControlPlaneResult('citation_binding');
   }
 
   return {
@@ -169,8 +221,8 @@ export function adaptControlPlaneResult(value: unknown): AskProplyGroundedEnvelo
     status: 'grounded',
     data_mode: dataMode,
     answer: record.answer,
-    citations: [...citations],
-    evidence: evidence.map((item) => ({
+    citations: [...typedCitations],
+    evidence: typedEvidence.map((item) => ({
       ...item,
       period: { ...item.period },
       source: {

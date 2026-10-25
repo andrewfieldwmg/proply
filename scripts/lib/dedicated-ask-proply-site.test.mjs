@@ -4,11 +4,13 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
+  adaptControlPlaneResult,
   AskProplyPolicyError,
   createAskProplyHandler,
   parseAskProplyBody,
   syntheticResearch,
 } from '../../apps/ask-proply-web/src/lib/ask-proply.ts';
+import { createControlPlaneResearch } from '../../apps/ask-proply-web/src/lib/control-plane.ts';
 
 const repositoryRoot = process.cwd();
 const appRoot = path.join(repositoryRoot, 'apps', 'ask-proply-web');
@@ -85,6 +87,78 @@ test('dedicated app owns and executes its bounded browser contract', async () =>
   assert.equal(body.evidence.length, 1);
   assert.equal('trace_id' in body, false);
   assert.equal('usage' in body, false);
+});
+
+test('control-plane rejection exposes only a stable content-free rule code', () => {
+  const invalid = {
+    answer: 'A bounded aggregate answer.',
+    citations: ['proply:market-summary:E10:2020-2025:T'],
+    evidence: [{
+      citation_id: 'proply:market-summary:E10:2020-2025:T',
+      area: 'E10',
+      property_type: 'T',
+      period: { start_year: 2020, end_year: 2025 },
+      transaction_count: 1,
+      average_sold_price_gbp: 1,
+      median_sold_price_gbp: 1,
+      source: {
+        name: 'Proply',
+        refreshed_at: '2026-10-25T00:00:00Z',
+        attribution: {
+          statement: 'Contains HM Land Registry data.',
+          licence_name: 'Open Government Licence v3.0',
+          licence_url: 'http://unsafe.example.test',
+        },
+      },
+      limitations: ['Aggregate research only.'],
+    }],
+    trace_id: 'server-only',
+    abstained: false,
+    usage: { model_calls: 2, tool_calls: 1 },
+    data_mode: 'proply_https',
+  };
+
+  assert.throws(
+    () => adaptControlPlaneResult(invalid),
+    (error) => error instanceof AskProplyPolicyError
+      && error.message === 'invalid_control_plane_result'
+      && error.diagnosticCode === 'evidence_attribution',
+  );
+});
+
+test('live adapter logs only the rejection stage and rule before failing closed', async () => {
+  const logged = [];
+  const originalInfo = console.info;
+  console.info = (message) => logged.push(String(message));
+  try {
+    const research = createControlPlaneResearch({
+      config: {
+        url: 'https://example.execute-api.eu-west-2.amazonaws.com/v1/research',
+        region: 'eu-west-2',
+        roleArn: 'arn:aws:iam::123456789012:role/ask-proply-preview',
+      },
+      sign: async () => ({}),
+      transport: async () => new Response(JSON.stringify({
+        answer: 'private answer must not be logged',
+        citations: ['proply:market-summary:E10:2020-2025:T'],
+        evidence: [],
+        abstained: false,
+        data_mode: 'proply_https',
+      }), { status: 200 }),
+    });
+    await assert.rejects(research('private question must not be logged'), /control_plane_unavailable/);
+  } finally {
+    console.info = originalInfo;
+  }
+
+  assert.equal(logged.length, 1);
+  assert.deepEqual(JSON.parse(logged[0]), {
+    event: 'ask_proply_upstream_rejected',
+    stage: 'response_contract',
+    validation_code: 'evidence_shape',
+    content_logged: false,
+  });
+  assert.doesNotMatch(logged[0], /private|proply:market-summary|E10/);
 });
 
 test('dedicated app source does not import code from outside its project root', async () => {

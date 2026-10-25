@@ -36,6 +36,9 @@ test('dedicated Ask Proply app is a self-contained Vercel project root', async (
   const page = await source('src/app/page.tsx');
   assert.match(page, /Ask Proply/);
   assert.match(page, /<ResearchForm/);
+  assert.match(page, /ASK_PROPLY_LIVE_ENABLED === 'true'/);
+  assert.match(page, /Live governed research/);
+  assert.match(page, /Synthetic UI preview/);
   assert.doesNotMatch(page, /href=["']\/ask/);
 
   const rootTypeScript = JSON.parse(await readFile(path.join(repositoryRoot, 'tsconfig.json'), 'utf8'));

@@ -1,6 +1,8 @@
 import ResearchForm from './research-form';
 
 export default function AskProplyHomePage() {
+  const liveEnabled = process.env.ASK_PROPLY_LIVE_ENABLED === 'true';
+
   return (
     <main>
       <header className="masthead">
@@ -11,7 +13,9 @@ export default function AskProplyHomePage() {
         </div>
         <div className="statuses" aria-label="Service status">
           <span className="status status-live">Read-only</span>
-          <span className="status">Synthetic UI preview</span>
+          <span className="status">
+            {liveEnabled ? 'Live governed research' : 'Synthetic UI preview'}
+          </span>
         </div>
       </header>
 
@@ -25,7 +29,13 @@ export default function AskProplyHomePage() {
           <p className="eyebrow">Governed property research</p>
           <h2 id="ask-heading">Ask one focused market question.</h2>
         </div>
-        <p>Questions are checked before execution and can use only approved aggregate data for E10, E11 and E17. This local preview makes no live agent, model, property-service or database request.</p>
+        <p>
+          Questions are checked before execution and can use only approved aggregate data for E10, E11 and E17.
+          {' '}
+          {liveEnabled
+            ? 'Each request follows the governed Proply research path and reports its evidence and limitations.'
+            : 'This synthetic preview makes no live agent, model, property-service or database request.'}
+        </p>
       </section>
 
       <ResearchForm />
